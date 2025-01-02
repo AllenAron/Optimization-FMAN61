@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np # type: ignore
 from typing import Callable, Tuple
 from grad import grad_c
 
@@ -20,7 +20,7 @@ def non_linear_min(f: Callable[[np.ndarray], float],
                                              np.dot(p.T, q))) * p @ p.T) - D @ q @ p.T - p @ q.T @ D)/np.dot(p.T,q)
     
     if line_search == 'golden_section': search_method = lambda f: golden_section(f,0,10,tol)
-    elif line_search == 'armijo': search_method = lambda f: armijo(f)
+    elif line_search == 'armijo': search_method = lambda f, fgrad: armijo(f, fgrad)
 
     # Initialize variables
     D = np.eye(np.size(x0))  # Initial estimate of Hessian
@@ -33,8 +33,7 @@ def non_linear_min(f: Callable[[np.ndarray], float],
     N_evals += 2
     d = -g
 
-    #lambd, N_new_eval = golden_section(lambda y: f(x0+y*d), 0, max_lambd, 0.01)
-    lambd, N_new_eval = search_method(lambda y: f(x+d*y))
+    lambd, N_new_eval = search_method(lambda y: f(x+d*y), np.dot(d,g))
     x1 = x0+lambd*d
     N_evals += N_new_eval
 
@@ -56,6 +55,7 @@ def non_linear_min(f: Callable[[np.ndarray], float],
             D = np.eye(np.size(x))            
        
         g1 = grad_c(f, x1)
+    
         N_evals += 2
 
         q = g1 - g
@@ -67,7 +67,7 @@ def non_linear_min(f: Callable[[np.ndarray], float],
         x = x1  # Reset the old values
         g = g1
 
-        lambd, N = search_method(lambda y: f(x+d*y))
+        lambd, N = search_method(lambda y: f(x+d*y), np.dot(g1, d))
         x1 = x+lambd*d
         N_new_eval += N
         N_evals += N_new_eval
@@ -109,20 +109,19 @@ def golden_section(func, a, b, tol):
             Ln = b-a
             mr = a+tau*Ln
             right_val = func(mr)
-    return b, N  # Fix this
+    return b, N
 
 
-def armijo(f, alpha=2, epsilon=0.2, lambd=1):
+def armijo(f, fgrad, alpha=2, epsilon=0.2, lambd=1):
     f0 = f(0)
-    fprime0 = grad_c(f, np.array([0.]))
-    N = 5  # total number of function evaluations since derivative takes two and each loop needs to be checked at least once
+    N = 3  # minimum number of function evalutations in each usage of armijo's rule
 
-    while (f(alpha*lambd) < f0+epsilon*fprime0*alpha*lambd):
+    while (f(alpha*lambd) < f0+epsilon*fgrad*alpha*lambd):
         N += 1  # one more check for each iteration of the while loop
         lambd = alpha*lambd
 
-    while f(lambd) > f0 + epsilon*fprime0*lambd:
+    while f(lambd) > f0 + epsilon*fgrad*lambd:
         N += 1
         lambd = lambd/alpha
-        
+    
     return lambd, N

@@ -1,6 +1,6 @@
 
 from typing import Callable
-import numpy as np
+import numpy as np # type: ignore
 
 
 
@@ -26,8 +26,7 @@ def grad_c(f : Callable[[np.ndarray], float], \
         hi = np.zeros(x.shape, x.dtype)
         hi[i] = h
         g[i] = (f(x+hi) - f(x-hi)) * inv_2h
-        #print(f(x+hi), f(x-hi), inv_2h)
-
+        
     return g
 
 
